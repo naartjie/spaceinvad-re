@@ -2,8 +2,8 @@
   "name": "space-invadre",
   "scripts": {
     "start": "bsb -w",
-    "rollup": "rollup --input ./lib/es6_global/src/app.js -n anything --format iife --output lib/dist/bundle.js",
-    "rollin": "rollup --watch --input ./lib/es6_global/src/app.js -n anything --format iife --output lib/dist/bundle.js"
+    "rollup": "rollup --input ./lib/es6_global/src/main.js -n anything --format iife --output lib/dist/bundle.js",
+    "rollin": "rollup --watch --input ./lib/es6_global/src/main.js -n anything --format iife --output lib/dist/bundle.js"
   },
   "devDependencies": {
     "bs-platform": "^1.7.5",
