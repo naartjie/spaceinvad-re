@@ -1,0 +1,5 @@
+{
+  "name": "index-html",
+  "sources": "src",
+  "package-specs": ["es6-global"]
+}
