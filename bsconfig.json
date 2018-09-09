@@ -1,5 +1,16 @@
 {
-  "name": "space-invadre",
+  "name": "spaceinvad-re",
   "sources": "src",
-  "package-specs": ["es6-global"]
+  "bs-dependencies": ["Reprocessing"],
+  "entries": [{
+    "backend": "bytecode",
+    "main-module": "IndexHot"
+  },{
+    "backend": "native",
+    "main-module": "Index"
+  },{
+    "backend": "js",
+    "main-module": "Index"
+  }],
+  "refmt": 3,
 }

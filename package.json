@@ -1,13 +1,17 @@
 {
-  "name": "space-invadre",
+  "name": "spaceinvad-re",
   "scripts": {
-    "start": "bsb -w",
-    "rollup": "rollup --input ./lib/es6_global/src/main.js -n anything --format iife --output lib/dist/bundle.js",
-    "rollin": "rollup --watch --input ./lib/es6_global/src/main.js -n anything --format iife --output lib/dist/bundle.js"
+    "start": "./lib/bs/bytecode/indexhot.byte",
+    "start:native": "./lib/bs/native/index.native",
+    "build": "bsb -make-world",
+    "build:web": "bsb -make-world -backend js",
+    "build:native": "bsb -make-world -backend native",
+    "clean": "bsb -clean-world"
+  },
+  "dependencies": {
+    "Reprocessing": "schmavery/reprocessing"
   },
   "devDependencies": {
-    "bs-platform": "^1.7.5",
-    "rollup": "^0.43.0",
-    "rollup-watch": "^4.3.1"
+    "bs-platform": "bsansouci/bsb-native#3.2.0"
   }
 }
