@@ -4,13 +4,13 @@
   "bs-dependencies": ["Reprocessing"],
   "entries": [{
     "backend": "bytecode",
-    "main-module": "IndexHot"
+    "main-module": "HotReload"
   },{
     "backend": "native",
-    "main-module": "Index"
+    "main-module": "Main"
   },{
     "backend": "js",
-    "main-module": "Index"
+    "main-module": "Main"
   }],
   "refmt": 3,
 }
