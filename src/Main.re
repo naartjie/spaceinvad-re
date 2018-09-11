@@ -6,44 +6,93 @@ type state = {
   position: (int, int),
 };
 
+let spaceshipA = [
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+  [3, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3],
+  [3, 0, 1, 1, 1, 1, 1, 1, 1, 0, 3],
+  [3, 1, 1, 0, 1, 1, 1, 0, 1, 1, 3],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [2, 3, 1, 1, 1, 1, 1, 1, 1, 3, 2],
+  [2, 0, 1, 0, 0, 0, 0, 0, 1, 0, 2],
+  [0, 3, 0, 2, 2, 0, 2, 2, 0, 3, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+];
+
+let spaceshipB = [
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
+  [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+  [0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0],
+  [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
+  [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+  [0, 0, 2, 0, 3, 0, 3, 0, 2, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+];
+
+let spaceshipC = [
+  [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+  [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+  [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+  [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0],
+  [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+  [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+  [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
+  [0, 0, 1, 0, 3, 3, 0, 1, 0, 0, 0],
+  [0, 3, 0, 1, 0, 0, 1, 0, 3, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+];
+
+let spaceships = [|
+  ((1, 0), spaceshipA),
+  ((2, 11), spaceshipB),
+  ((2, 23), spaceshipC),
+|];
+
 let setup = env => {
   Env.size(~width=700, ~height=700, env);
   {time: 0.0, speed: 1.0, position: (0, 0)};
 };
 
-let drawBoard = (_state, env) => {
+let drawBoard = (state, env) => {
   let shipColor = Utils.color(~r=200, ~g=200, ~b=200, ~a=255);
   let pixelSize = 20;
   let gap = 1;
 
-  let spaceShipRaster = [
-    /* -1 */ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    /*  0 */ [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-    /*  1 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
-    /*  2 */ [0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0],
-    /*  3 */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    /*  4 */ [1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    /*  5 */ [1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],
-    /*  6 */ [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-    /*  7 */ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    /*  8 */ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    /*  9 */ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  ];
+  let {time} = state;
 
-  for (i in 0 to 14) {
-    for (j in 0 to 14) {
-      let inBounds =
-        i < List.length(List.hd(spaceShipRaster))
-        && j < List.length(spaceShipRaster);
+  let step = int_of_float(time *. 10.0) mod 10 > 5;
 
-      if (inBounds && List.nth(List.nth(spaceShipRaster, j), i) == 1) {
-        Draw.fill(shipColor, env);
-        Draw.rect(
-          ~pos=(i * pixelSize, j * pixelSize),
-          ~width=pixelSize - gap,
-          ~height=pixelSize - gap,
-          env,
-        );
+  for (s in 0 to Array.length(spaceships) - 1) {
+    let ((x, y), ship) = spaceships[s];
+    for (i in 0 to 14) {
+      for (j in 0 to 14) {
+        let inBounds =
+          i < List.length(List.hd(ship)) && j < List.length(ship);
+
+        if (inBounds) {
+          let pixelKinda = List.nth(List.nth(ship, j), i);
+
+          if (pixelKinda == 1
+              || pixelKinda == 2
+              && step
+              || pixelKinda == 3
+              && ! step) {
+            Draw.fill(shipColor, env);
+            Draw.rect(
+              ~pos=((i + x) * pixelSize, (j + y) * pixelSize),
+              ~width=pixelSize - gap,
+              ~height=pixelSize - gap,
+              env,
+            );
+          };
+        };
       };
     };
   };
