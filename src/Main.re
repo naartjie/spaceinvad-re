@@ -1,16 +1,21 @@
 open Reprocessing;
 
-type spaceshipRaster = list(list(int));
+type raster = list(list(int));
 type position = (float, float);
-type spaceship = (position, spaceshipRaster);
+type spaceship = (position, raster);
 
 type state = {
   time: float,
   timeDelta: float,
   speed: float,
-  position: (int, int),
+  speedV: float,
   spaceships: array(spaceship),
+  shooter: spaceship,
 };
+
+let screenWidth = 600;
+let screenHeight = 350;
+let pixelSize = 6.0;
 
 let spaceshipA = [
   [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
@@ -57,19 +62,29 @@ let spaceshipsInitial = [|
   ((30.0, 25.0), spaceshipA),
 |];
 
+let shooterRaster = [
+  [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+];
+
+let heightOfShooter = shooterRaster |> List.length |> float_of_int;
+let widthOfShooter = shooterRaster |> List.hd |> List.length |> float_of_int;
+
 let initialState = {
   time: 0.0,
   speed: 10.0,
-  position: (0, 0),
+  speedV: 0.0,
   timeDelta: 1.0,
   spaceships: spaceshipsInitial,
+  shooter: ((45.0, 50.0), shooterRaster),
 };
 
-let screenWidth = 700;
-let pixelSize = 6.0;
-
 let setup = env => {
-  Env.size(~width=screenWidth, ~height=700, env);
+  Env.size(~width=screenWidth, ~height=screenHeight, env);
   initialState;
 };
 
@@ -78,11 +93,11 @@ let drawBoard = (state, env) => {
 
   let {time} = state;
   let step = int_of_float(time *. 10.0) mod 10 >= 5;
-
-  for (s in 0 to Array.length(state.spaceships) - 1) {
-    let ((x, y), ship) = state.spaceships[s];
-    for (i in 0 to 14) {
-      for (j in 0 to 14) {
+  let len = Array.length(state.spaceships);
+  for (s in 0 to len) {
+    let ((x, y), ship) = s == len ? state.shooter : state.spaceships[s];
+    for (i in 0 to 20) {
+      for (j in 0 to 20) {
         let inBounds =
           i < List.length(List.hd(ship)) && j < List.length(ship);
 
@@ -118,9 +133,12 @@ let stepTime = (state, env) => {
 
 let calculatePositions = (state, _env) => {
   let posXDelta = state.timeDelta *. state.speed;
+  let posYDelta = state.timeDelta *. state.speedV;
   let spaceships =
     state.spaceships
-    |> Array.map((((x, y), raster)) => ((x +. posXDelta, y), raster));
+    |> Array.map((((x, y), raster)) =>
+         ((x +. posXDelta, y +. posYDelta), raster)
+       );
   {...state, spaceships};
 };
 
@@ -144,6 +162,16 @@ let checkBounds = (state, _env) => {
   {...state, speed};
 };
 
+let keyTyped = (state, env) => {
+  let {shooter: ((x, y), raster)} = state;
+
+  switch (Env.keyCode(env)) {
+  | Left => {...state, shooter: ((x -. 1.0, y), raster)}
+  | Right => {...state, shooter: ((x +. 1.0, y), raster)}
+  | _ => state
+  };
+};
+
 let draw = (state, env) => {
   let state = stepTime(state, env);
   let state = calculatePositions(state, env);
@@ -154,16 +182,6 @@ let draw = (state, env) => {
 
   drawBoard(state, env);
   state;
-};
-
-let keyTyped = (state, env) => {
-  let {speed} = state;
-
-  switch (Env.keyCode(env)) {
-  | Left => {...state, speed: speed < 0.0 ? speed : speed *. (-1.0)}
-  | Right => {...state, speed: speed > 0.0 ? speed : speed *. (-1.0)}
-  | _ => state
-  };
 };
 
 run(~setup, ~draw, ~keyTyped, ());
