@@ -12,10 +12,10 @@ type direction =
 type state = {
   time: float,
   timeDelta: float,
-  speed: float,
+  spaceshipsDirection: direction,
   /* actions */
   shooting: bool,
-  direction,
+  shooterDirection: direction,
   /* drawables */
   shooter: drawable,
   bullets: list(drawable),
@@ -88,15 +88,19 @@ let widthOfRaster = r => r |> List.hd |> List.length |> float_of_int;
 let heightOfShooter = heightOfRaster(shooterRaster);
 let widthOfShooter = widthOfRaster(shooterRaster);
 
+let spaceshipSpeed = 10.0;
+let bulletSpeed = 60.0;
+let shooterSpeed = 40.0;
+
 let initialState = {
   time: 0.0,
-  speed: 10.0,
   timeDelta: 1.0,
   spaceships: spaceshipsInitial,
+  spaceshipsDirection: Right,
   shooter: ((45.0, 50.0), shooterRaster),
   bullets: [],
   shooting: false,
-  direction: None,
+  shooterDirection: None,
 };
 
 let setup = env => {
@@ -104,10 +108,95 @@ let setup = env => {
   initialState;
 };
 
+let stepTime = (state, env) => {
+  let delta = Env.deltaTime(env);
+  let time = state.time +. delta;
+  {...state, time, timeDelta: delta};
+};
+
+let recalcPositions = (state, _env) => {
+  let spaceshipsAtEdge =
+    state.spaceships
+    |> List.fold_left(
+         (acc, ((x, _), raster)) => {
+           let atRightEdge =
+             x
+             +. widthOfRaster(raster) > float_of_int(screenWidth)
+             /. pixelSize;
+
+           let atLeftEdge = x <= 1.0;
+
+           switch (acc, atLeftEdge, atRightEdge) {
+           | (Left, _, _) => Left
+           | (Right, _, _) => Right
+           | (_, true, _) => Left
+           | (_, _, true) => Right
+           | _ => None
+           };
+         },
+         None,
+       );
+
+  let spaceshipsDirection =
+    switch (spaceshipsAtEdge) {
+    | Left => Right
+    | Right => Left
+    | _ => state.spaceshipsDirection
+    };
+
+  let spaceshipDelta =
+    state.timeDelta
+    *. spaceshipSpeed
+    *. (spaceshipsDirection === Left ? (-1.0) : 1.0);
+  let spaceships =
+    state.spaceships
+    |> List.map((((x, y), raster)) => ((x +. spaceshipDelta, y), raster));
+
+  let bulletsDelta = state.timeDelta *. (-. bulletSpeed);
+  let bullets =
+    state.bullets
+    |> List.map((((x, y), raster)) => ((x, y +. bulletsDelta), raster));
+
+  let ((x, y), raster) = state.shooter;
+  let shooterDelta = state.timeDelta *. shooterSpeed;
+  let atLeftEdge = x <= 1.0;
+  let atRightEdge =
+    x +. widthOfShooter >= float_of_int(screenWidth) /. pixelSize;
+  let shooterPos =
+    switch (state.shooterDirection, atLeftEdge, atRightEdge) {
+    | (Left, false, _) => (x -. shooterDelta, y)
+    | (Right, _, false) => (x +. shooterDelta, y)
+    | _ => (x, y)
+    };
+
+  {
+    ...state,
+    spaceships,
+    spaceshipsDirection,
+    bullets,
+    shooter: (shooterPos, raster),
+  };
+};
+
+let shootBullet = (state, _env) => {
+  let {shooting, shooter, bullets} = state;
+  let bullets =
+    if (shooting) {
+      let ((x, y), _) = shooter;
+      let x = x +. widthOfShooter /. 2.0;
+      [((x, y), bulletRaster), ...bullets];
+    } else {
+      bullets;
+    };
+
+  {...state, shooting: false, bullets};
+};
+
 let drawBoard = (state, env) => {
   let shipColor = Utils.color(~r=200, ~g=200, ~b=200, ~a=255);
 
   let {time} = state;
+
   let step = int_of_float(time *. 10.0) mod 10 >= 5;
   let drawables = [
     state.shooter,
@@ -116,20 +205,20 @@ let drawBoard = (state, env) => {
 
   drawables
   |> List.map((((x, y), raster)) =>
-       for (i in 0 to 20) {
-         for (j in 0 to 20) {
+       for (i in 0 to 15) {
+         for (j in 0 to 15) {
            let inBounds =
              i < List.length(List.hd(raster)) && j < List.length(raster);
 
            if (inBounds) {
-             let pixelKinda = List.nth(List.nth(raster, j), i);
+             let rasterPixel = List.nth(List.nth(raster, j), i);
              let i = float_of_int(i);
              let j = float_of_int(j);
 
-             if (pixelKinda == 1
-                 || pixelKinda == 2
+             if (rasterPixel == 1
+                 || rasterPixel == 2
                  && step
-                 || pixelKinda == 3
+                 || rasterPixel == 3
                  && ! step) {
                Draw.fill(shipColor, env);
                Draw.ellipsef(
@@ -148,83 +237,12 @@ let drawBoard = (state, env) => {
   state;
 };
 
-let stepTime = (state, env) => {
-  let delta = Env.deltaTime(env);
-  let time = state.time +. delta;
-  {...state, time, timeDelta: delta};
-};
-
-let recalcPositions = (state, _env) => {
-  let posXDelta = state.timeDelta *. state.speed;
-  let spaceships =
-    state.spaceships
-    |> List.map((((x, y), raster)) => ((x +. posXDelta, y), raster));
-
-  let bullets =
-    state.bullets
-    |> List.map((((x, y), raster)) => ((x, y -. 1.0), raster));
-
-  let ((x, y), raster) = state.shooter;
-
-  let atLeftEdge = x <= 1.0;
-  let atRightEdge =
-    x +. widthOfShooter >= float_of_int(screenWidth) /. pixelSize;
-
-  let shooterPos =
-    switch (state.direction, atLeftEdge, atRightEdge) {
-    | (Left, false, _) => (x -. 1.0, y)
-    | (Right, _, false) => (x +. 1.0, y)
-    | _ => (x, y)
-    };
-
-  {...state, spaceships, shooter: (shooterPos, raster), bullets};
-};
-
-let checkBounds = (state, _env) => {
-  let spaceshipsAtEdge =
-    state.spaceships
-    |> List.fold_left(
-         (acc, ((x, _), raster)) => {
-           let isWider =
-             x
-             +. widthOfRaster(raster) > float_of_int(screenWidth)
-             /. pixelSize;
-           acc || isWider || x <= 0.0;
-         },
-         false,
-       );
-
-  let speed = spaceshipsAtEdge ? state.speed *. (-1.0) : state.speed;
-
-  {...state, speed};
-};
-
-let shootBullet = (state, _env) => {
-  let {shooting, shooter, bullets} = state;
-  let bullets =
-    if (shooting) {
-      let ((x, y), _) = shooter;
-      let x = x +. widthOfShooter /. 2.0;
-      [((x, y), bulletRaster), ...bullets];
-    } else {
-      bullets;
-    };
-
-  {...state, shooting: false, bullets};
-};
-
 let draw = (state, env) => {
   let backgroundColor = Utils.color(~r=24, ~g=24, ~b=24, ~a=255);
   Draw.background(backgroundColor, env);
 
   let (>>>) = (state, fn) => fn(state, env);
-
-  state
-  >>> stepTime
-  >>> checkBounds
-  >>> recalcPositions
-  >>> shootBullet
-  >>> drawBoard;
+  state >>> stepTime >>> recalcPositions >>> shootBullet >>> drawBoard;
 };
 
 let keyPressed = (state, env) => {
@@ -234,9 +252,9 @@ let keyPressed = (state, env) => {
 
   switch (thisKey, leftIsDown, rightIsDown) {
   | (Space, _, _) => {...state, shooting: true}
-  | (Left, _, false) => {...state, direction: Left}
-  | (Right, false, _) => {...state, direction: Right}
-  | _ => {...state, direction: None}
+  | (Left, _, false) => {...state, shooterDirection: Left}
+  | (Right, false, _) => {...state, shooterDirection: Right}
+  | _ => {...state, shooterDirection: None}
   };
 };
 
@@ -245,9 +263,9 @@ let keyReleased = (state, env) => {
   let rightIsDown = Env.key(Right, env);
 
   switch (leftIsDown, rightIsDown) {
-  | (true, false) => {...state, direction: Left}
-  | (false, true) => {...state, direction: Right}
-  | _ => {...state, direction: None}
+  | (true, false) => {...state, shooterDirection: Left}
+  | (false, true) => {...state, shooterDirection: Right}
+  | _ => {...state, shooterDirection: None}
   };
 };
 
