@@ -193,7 +193,7 @@ let shootBullet = (state, _env) => {
 };
 
 let drawBoard = (state, env) => {
-  let shipColor = Utils.color(~r=200, ~g=200, ~b=200, ~a=255);
+  let shipColor = Utils.color(~r=200, ~g=200, ~b=0, ~a=255);
 
   let {time} = state;
 
