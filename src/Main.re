@@ -80,6 +80,16 @@ let shooterRaster = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
 
+let explosion = [
+  [0, 0, 0, 0, 0, 0, 0],
+  [0, 1, 0, 0, 0, 1, 0],
+  [0, 0, 1, 0, 1, 0, 0],
+  [0, 0, 0, 1, 0, 0, 0],
+  [0, 0, 1, 0, 1, 0, 0],
+  [0, 1, 0, 0, 0, 1, 0],
+  [0, 0, 0, 0, 0, 0, 0],
+];
+
 let bulletRaster = [[1], [1], [1]];
 
 let heightOfRaster = r => r |> List.length |> float_of_int;
@@ -147,15 +157,18 @@ let recalcPositions = (state, _env) => {
   let spaceshipDelta =
     state.timeDelta
     *. spaceshipSpeed
-    *. (spaceshipsDirection === Left ? (-1.0) : 1.0);
+    *. (spaceshipsDirection === Left ? (-1.) : 1.);
+
   let spaceships =
     state.spaceships
     |> List.map((((x, y), raster)) => ((x +. spaceshipDelta, y), raster));
 
   let bulletsDelta = state.timeDelta *. (-. bulletSpeed);
+
   let bullets =
     state.bullets
-    |> List.map((((x, y), raster)) => ((x, y +. bulletsDelta), raster));
+    |> List.map((((x, y), raster)) => ((x, y +. bulletsDelta), raster))
+    |> List.filter((((_, y), _)) => y > 0.);
 
   let ((x, y), raster) = state.shooter;
   let shooterDelta = state.timeDelta *. shooterSpeed;
@@ -183,7 +196,7 @@ let shootBullet = (state, _env) => {
   let bullets =
     if (shooting) {
       let ((x, y), _) = shooter;
-      let x = x +. widthOfShooter /. 2.0;
+      let x = x +. widthOfShooter /. 2.0 -. 0.5;
       [((x, y), bulletRaster), ...bullets];
     } else {
       bullets;
@@ -193,7 +206,7 @@ let shootBullet = (state, _env) => {
 };
 
 let drawBoard = (state, env) => {
-  let shipColor = Utils.color(~r=200, ~g=200, ~b=0, ~a=255);
+  let shipColor = Utils.color(~r=200, ~g=200, ~b=255, ~a=255);
 
   let {time} = state;
 
@@ -237,12 +250,41 @@ let drawBoard = (state, env) => {
   state;
 };
 
+let collision = (((x1, y1), _), ((x2, y2), _)) =>
+  abs_float(x1 -. x2) < 10.0 && abs_float(y1 -. y2) < 10.0;
+
+let collisionDetection = (state, _env) => {
+  let {bullets, spaceships} = state;
+
+  let bullets = ref(bullets);
+
+  let spaceships =
+    spaceships
+    |> List.map(ship =>
+         switch (bullets^ |> List.find(bullet => collision(ship, bullet))) {
+         | bullet =>
+           /* replace ship with explosion */
+           let ((x, y), _) = ship;
+           bullets := bullets^ |> List.filter(b2 => b2 != bullet);
+           ((x, y), explosion);
+         | exception _ => ship
+         }
+       );
+
+  {...state, bullets: bullets^, spaceships};
+};
+
 let draw = (state, env) => {
   let backgroundColor = Utils.color(~r=24, ~g=24, ~b=24, ~a=255);
   Draw.background(backgroundColor, env);
 
   let (>>>) = (state, fn) => fn(state, env);
-  state >>> stepTime >>> recalcPositions >>> shootBullet >>> drawBoard;
+  state
+  >>> stepTime
+  >>> recalcPositions
+  >>> collisionDetection
+  >>> shootBullet
+  >>> drawBoard;
 };
 
 let keyPressed = (state, env) => {
